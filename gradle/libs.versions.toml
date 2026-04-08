@@ -1,0 +1,16 @@
+[versions]
+openrewrite = "latest.release"
+lombok = "latest.release"
+junit = "latest.release"
+
+[libraries]
+openrewrite-bom = { module = "org.openrewrite.recipe:rewrite-recipe-bom", version.ref = "openrewrite" }
+openrewrite-java = { module = "org.openrewrite:rewrite-java" }
+openrewrite-java-jdk25 = { module = "org.openrewrite:rewrite-java-25" }
+openrewrite-test = { module = "org.openrewrite:rewrite-test" }
+
+lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
+
+jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
+jupiter-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit" }
+jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
