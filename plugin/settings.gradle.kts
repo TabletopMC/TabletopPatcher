@@ -1,5 +1,3 @@
-import org.gradle.kotlin.dsl.support.uppercaseFirstChar
-
 dependencyResolutionManagement {
   versionCatalogs {
     create("libs") {
@@ -13,4 +11,3 @@ plugins {
 }
 
 rootProject.name = "tabletop-patcher"
-rootProject.name.uppercaseFirstChar()

@@ -10,8 +10,6 @@ repositories {
 }
 
 dependencies {
-  implementation("javax.inject:javax.inject:1")
-
   implementation(platform(libs.openrewrite.bom))
   implementation(libs.openrewrite.java)
   runtimeOnly(libs.openrewrite.java.jdk25)

@@ -11,6 +11,10 @@ class TabletopPatcherPlugin implements Plugin<Project> {
 
   @Override
   public void apply(Project project) {
+    if (!project.getPlugins().hasPlugin("java") && !project.getPlugins().hasPlugin("java-library")) {
+      return;
+    }
+
     final SourceSetContainer sourceSetContainer = project.getExtensions().getByType(SourceSetContainer.class);
 
     final Provider<Directory> targetDirectory = project.getLayout().getBuildDirectory().dir("generated/sources/tabletop-patcher/");
