@@ -1,6 +1,7 @@
 plugins {
   id("java-gradle-plugin")
   id("maven-publish")
+  alias(libs.plugins.recipe.library)
 }
 
 repositories {
@@ -9,6 +10,8 @@ repositories {
 }
 
 dependencies {
+  implementation("javax.inject:javax.inject:1")
+
   implementation(platform(libs.openrewrite.bom))
   implementation(libs.openrewrite.java)
   runtimeOnly(libs.openrewrite.java.jdk25)
@@ -23,6 +26,11 @@ dependencies {
   testImplementation(libs.tabletop.api)
 }
 
+recipeDependencies {
+  parserClasspath("net.tabletopmc.tabletop:tabletop-api:26.1.1-SNAPSHOT")
+  parserClasspath("org.apache.maven:maven-resolver-provider:3.9.6")
+}
+
 gradlePlugin {
   val patcher by plugins.creating {
     id = "net.tabletopmc.tabletop-patcher"
@@ -34,8 +42,14 @@ java {
   toolchain.languageVersion = JavaLanguageVersion.of(25)
 }
 
-tasks.withType<JavaCompile>().configureEach {
-  options.compilerArgs.add("-parameters")
+tasks {
+  processResources {
+    dependsOn(createTypeTable)
+  }
+  withType<JavaCompile>().configureEach {
+    options.compilerArgs.add("-parameters")
+    options.release = 25;
+  }
 }
 
 testing {

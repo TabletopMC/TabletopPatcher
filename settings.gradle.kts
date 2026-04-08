@@ -1,3 +1,7 @@
+pluginManagement {
+  includeBuild("plugin")
+}
+
 rootProject.name = "tabletop-patcher"
 
-include("plugin")
+include("test-project")
