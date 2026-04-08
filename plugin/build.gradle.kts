@@ -1,9 +1,11 @@
 plugins {
-  `java-gradle-plugin`
+  id("java-gradle-plugin")
+  id("maven-publish")
 }
 
 repositories {
   mavenCentral()
+  mavenLocal()
 }
 
 dependencies {
@@ -18,6 +20,7 @@ dependencies {
   testImplementation(libs.jupiter.api)
   testImplementation(libs.jupiter.params)
   testRuntimeOnly(libs.jupiter.engine)
+  testImplementation(libs.tabletop.api)
 }
 
 gradlePlugin {
@@ -29,6 +32,10 @@ gradlePlugin {
 
 java {
   toolchain.languageVersion = JavaLanguageVersion.of(25)
+}
+
+tasks.withType<JavaCompile>().configureEach {
+  options.compilerArgs.add("-parameters")
 }
 
 testing {
