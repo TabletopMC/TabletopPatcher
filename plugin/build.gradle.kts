@@ -26,7 +26,7 @@ dependencies {
 
 recipeDependencies {
   parserClasspath("net.tabletopmc.tabletop:tabletop-api:26.1.1-SNAPSHOT")
-  parserClasspath("org.apache.maven:maven-resolver-provider:3.9.6")
+  parserClasspath("org.apache.maven.resolver:maven-resolver-api:1.9.25")
 }
 
 gradlePlugin {

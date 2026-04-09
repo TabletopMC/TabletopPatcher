@@ -57,7 +57,7 @@ class SourceSetPatchTask extends DefaultTask {
   void patchIntoGeneratedSourceSet() {
     final ExecutionContext ctx = ParsingExecutionContextView.view(new InMemoryExecutionContext(Throwable::printStackTrace));
     final JavaParser parser = JavaParser.fromJavaVersion()
-      .classpathFromResources(ctx, "tabletop-api", "maven-resolver-provider")
+      .classpathFromResources(ctx, "tabletop-api", "maven-resolver-api")
       .build();
 
     for (File rootFile : sourceDirectories) {

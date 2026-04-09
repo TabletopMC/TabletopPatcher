@@ -1,6 +1,9 @@
 package net.tabletopmc.patcher.recipes;
 
 import org.junit.jupiter.api.Test;
+import org.openrewrite.ExecutionContext;
+import org.openrewrite.InMemoryExecutionContext;
+import org.openrewrite.java.JavaParser;
 import org.openrewrite.test.RecipeSpec;
 import org.openrewrite.test.RewriteTest;
 
@@ -10,6 +13,9 @@ class MavenLibraryResolverRecipeTest implements RewriteTest {
   @Override
   public void defaults(RecipeSpec spec) {
     spec.recipe(new MavenLibraryResolverRecipe());
+    final ExecutionContext ctx = new InMemoryExecutionContext(System.out::println);
+    spec.executionContext(ctx);
+    spec.parser(JavaParser.fromJavaVersion().classpathFromResources(ctx, "tabletop-api", "maven-resolver-api"));
   }
 
   @Test

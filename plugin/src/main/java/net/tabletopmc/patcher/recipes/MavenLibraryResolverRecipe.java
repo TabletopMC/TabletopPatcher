@@ -33,8 +33,10 @@ public class MavenLibraryResolverRecipe extends Recipe {
     public J.MethodInvocation visitMethodInvocation(J.MethodInvocation method, ExecutionContext ctx) {
       if (ADD_REPOSITORY_URL_MATCHER.matches(method)) {
         final JavaTemplate repositoryUrlTemplate = JavaTemplate.builder("""
-            addRepository(new RemoteRepository.Builder(null, "default", #{any(String)}).build())""")
-          .imports("org.eclipse.aether.repository.RemoteRepository")
+            #{any(%s)}.addRepository(new RemoteRepository.Builder(null, "default", #{any(String)}).build());"""
+            .formatted(MAVEN_LIBRARY_RESOLVER)
+            .trim())
+          .imports("org.eclipse.aether.repository.RemoteRepository", "org.eclipse.aether.repository.RemoteRepository.Builder")
           .contextSensitive()
           .javaParser(constructJavaParser(ctx))
           .build();
@@ -43,13 +45,14 @@ public class MavenLibraryResolverRecipe extends Recipe {
         return super.visitMethodInvocation(repositoryUrlTemplate.apply(
           getCursor(),
           method.getCoordinates().replaceMethod(),
-          method.getArguments().getFirst()
+          method.getSelect(), method.getArguments().getFirst()
         ), ctx);
       }
 
       if (ADD_DEPENDENCY_COORDS_MATCHER.matches(method)) {
-        final JavaTemplate dependencyCoordsTemplate = JavaTemplate.builder("""
-            addDependency(new Dependency(new DefaultArtifact(#{any(String)}), null));""")
+        final JavaTemplate dependencyCoordsTemplate = JavaTemplate.builder(
+            "#{any(%s)}.addDependency(new Dependency(new DefaultArtifact(#{any(String)}), null));"
+              .formatted(MAVEN_LIBRARY_RESOLVER))
           .imports("org.eclipse.aether.graph.Dependency", "org.eclipse.aether.artifact.DefaultArtifact")
           .contextSensitive()
           .javaParser(constructJavaParser(ctx))
@@ -60,7 +63,7 @@ public class MavenLibraryResolverRecipe extends Recipe {
         return super.visitMethodInvocation(dependencyCoordsTemplate.apply(
           getCursor(),
           method.getCoordinates().replaceMethod(),
-          method.getArguments().getFirst()
+          method.getSelect(), method.getArguments().getFirst()
         ), ctx);
       }
 
@@ -69,7 +72,7 @@ public class MavenLibraryResolverRecipe extends Recipe {
 
     private JavaParser.Builder<?, ?> constructJavaParser(ExecutionContext ctx) {
       return JavaParser.fromJavaVersion()
-        .classpathFromResources(ctx, "tabletop-api", "maven-resolver-provider");
+        .classpathFromResources(ctx, "tabletop-api", "maven-resolver-api");
     }
   }
 }
