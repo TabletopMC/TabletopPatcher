@@ -3,8 +3,13 @@ package net.tabletopmc.patcher;
 import net.tabletopmc.patcher.recipes.MavenLibraryResolverRecipe;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.Directory;
+import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFile;
+import org.gradle.api.logging.Logger;
+import org.gradle.api.logging.Logging;
+import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskAction;
 import org.jspecify.annotations.NullMarked;
@@ -26,6 +31,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -33,24 +39,26 @@ import java.util.stream.Stream;
 
 @NullMarked
 class SourceSetPatchTask extends DefaultTask {
+  private static final Logger LOGGER = Logging.getLogger(SourceSetPatchTask.class);
   private static final List<Recipe> RECIPES = List.of(
     new MavenLibraryResolverRecipe()
   );
 
+  private final SetProperty<File> sourceDirectories;
+  private final DirectoryProperty targetDirectory;
+
   @Inject
-  public SourceSetPatchTask() {
-    // nothing to do
+  public SourceSetPatchTask(ObjectFactory objects) {
+    sourceDirectories = objects.setProperty(File.class);
+    targetDirectory = objects.directoryProperty();
   }
 
-  private Set<File> sourceDirectories;
-  private Provider<Directory> targetDirectory;
-
   void setTargetDirectory(Provider<Directory> targetDirectory) {
-    this.targetDirectory = targetDirectory;
+    this.targetDirectory.value(targetDirectory);
   }
 
   void setSourceSet(SourceSet sourceSet) {
-    this.sourceDirectories = sourceSet.getJava().getSrcDirs();
+    this.sourceDirectories.value(sourceSet.getJava().getSrcDirs());
   }
 
   @TaskAction
@@ -60,12 +68,11 @@ class SourceSetPatchTask extends DefaultTask {
       .classpathFromResources(ctx, "tabletop-api", "maven-resolver-api")
       .build();
 
-    for (File rootFile : sourceDirectories) {
+    for (File rootFile : sourceDirectories.get()) {
       final Path rootPath = rootFile.toPath();
       try (Stream<Path> paths = Files.walk(rootPath)) {
         final Stream<Parser.Input> inputs = paths
           .filter(Files::isRegularFile)
-          .peek(file -> System.out.println("Rewriting " + file))
           .map(path -> {
             try {
               return Parser.Input.fromString(path, Files.readString(path));
@@ -77,11 +84,12 @@ class SourceSetPatchTask extends DefaultTask {
         final List<SourceFile> sourceFiles = parser.parseInputs(inputs.toList(), rootPath, ctx).toList();
         final List<SourceFile> modifiedFiles = applyRecipes(ctx, sourceFiles);
 
+        final Set<Path> copiedPaths = new HashSet<>();
         for (SourceFile modifiedFile : modifiedFiles) {
           final String content = modifiedFile.printAll();
           final RegularFile targetFile = targetDirectory.get().file(modifiedFile.getSourcePath().toString());
           final Path targetPath = targetFile.getAsFile().toPath();
-          System.out.println("targetPath: " + targetPath);
+          LOGGER.lifecycle("Copying modified file: " + targetPath);
 
           if (!Files.deleteIfExists(targetPath)) {
             Files.createDirectories(targetPath.getParent());
@@ -89,6 +97,24 @@ class SourceSetPatchTask extends DefaultTask {
 
           Files.createFile(targetPath);
           Files.writeString(targetPath, content);
+          copiedPaths.add(targetPath);
+        }
+
+        for (SourceFile sourceFile : sourceFiles) {
+          final RegularFile targetFile = targetDirectory.get().file(sourceFile.getSourcePath().toString());
+          final Path targetPath = targetFile.getAsFile().toPath();
+          if (copiedPaths.contains(targetPath)) {
+            continue;
+          }
+
+          LOGGER.lifecycle("Copying source file: " + targetPath);
+          if (!Files.deleteIfExists(targetPath)) {
+            Files.createDirectories(targetPath.getParent());
+          }
+
+          Files.createFile(targetPath);
+          Files.writeString(targetPath, sourceFile.printAll());
+          copiedPaths.add(targetPath);
         }
       } catch (IOException e) {
         throw new RuntimeException(e);

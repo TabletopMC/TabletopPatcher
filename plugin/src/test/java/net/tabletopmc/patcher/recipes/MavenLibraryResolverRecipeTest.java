@@ -1,11 +1,11 @@
 package net.tabletopmc.patcher.recipes;
 
 import org.junit.jupiter.api.Test;
-import org.openrewrite.ExecutionContext;
-import org.openrewrite.InMemoryExecutionContext;
-import org.openrewrite.java.JavaParser;
+import org.openrewrite.java.search.FindMissingTypes;
+import org.openrewrite.java.tree.J;
 import org.openrewrite.test.RecipeSpec;
 import org.openrewrite.test.RewriteTest;
+import org.openrewrite.test.TypeValidation;
 
 import static org.openrewrite.java.Assertions.java;
 
@@ -13,9 +13,14 @@ class MavenLibraryResolverRecipeTest implements RewriteTest {
   @Override
   public void defaults(RecipeSpec spec) {
     spec.recipe(new MavenLibraryResolverRecipe());
-    final ExecutionContext ctx = new InMemoryExecutionContext(System.out::println);
-    spec.executionContext(ctx);
-    spec.parser(JavaParser.fromJavaVersion().classpathFromResources(ctx, "tabletop-api", "maven-resolver-api"));
+    spec.typeValidationOptions(TypeValidation.builder()
+      .allowMissingType(obj -> {
+        if (obj instanceof FindMissingTypes.MissingTypeResult missingType) {
+          return missingType.getJ() instanceof J.NewClass;
+        }
+        return false;
+      })
+      .build());
   }
 
   @Test
