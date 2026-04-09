@@ -26,6 +26,9 @@ jobs:
       - name: Build plugin
         run: ./gradlew :plugin:build
 
+      - name: Run plugin tests
+        run: ./gradlew :plugin:test
+
       - name: Build test project
         run: ./gradlew :test-project:build
 
