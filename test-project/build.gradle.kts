@@ -4,8 +4,7 @@ plugins {
 }
 
 repositories {
-  mavenCentral()
-  mavenLocal()
+  maven("https://eldonexus.de/repository/maven-public/")
 }
 
 dependencies {

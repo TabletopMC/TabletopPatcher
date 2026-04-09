@@ -7,7 +7,7 @@ plugins {
 
 repositories {
   mavenCentral()
-  mavenLocal()
+  maven("https://eldonexus.de/repository/maven-public/")
 }
 
 dependencies {
@@ -42,7 +42,7 @@ gradlePlugin {
 
 publishing {
   repositories {
-    maven("https://eldonexus.de/maven-releases/") {
+    maven("https://eldonexus.de/repository/maven-releases/") {
       name = "Eldonexus"
       credentials {
         username = System.getenv("NEXUS_USERNAME") ?: ""
