@@ -3,7 +3,6 @@ package net.tabletopmc.patcher.recipes;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 import org.openrewrite.ExecutionContext;
-import org.openrewrite.InMemoryExecutionContext;
 import org.openrewrite.Recipe;
 import org.openrewrite.TreeVisitor;
 import org.openrewrite.java.JavaIsoVisitor;
@@ -25,20 +24,6 @@ public class MavenLibraryResolverRecipe extends Recipe {
 
   private static final class Visitor extends JavaIsoVisitor<ExecutionContext> {
     private static final String MAVEN_LIBRARY_RESOLVER = "io.papermc.paper.plugin.loader.library.impl.MavenLibraryResolver";
-    private static final JavaParser.Builder<?, ?> JAVA_PARSER = JavaParser.fromJavaVersion()
-      .classpathFromResources(new InMemoryExecutionContext(Throwable::printStackTrace), "tabletop-api", "maven-resolver-provider");
-
-    private static final JavaTemplate REPOSITORY_URL_TEMPLATE = JavaTemplate.builder("""
-        addRepository(new RemoteRepository.Builder(null, "default", #{any(String)}).build())""")
-      .imports("org.eclipse.aether.repository.RemoteRepository")
-      .javaParser(JAVA_PARSER)
-      .build();
-    private static final JavaTemplate DEPENDENCY_COORDS_TEMPLATE = JavaTemplate.builder("""
-        addDependency(new Dependency(new DefaultArtifact(#{any(String)}), null));""")
-      .imports("org.eclipse.aether.graph.Dependency", "org.eclipse.aether.artifact.DefaultArtifact")
-      .javaParser(JAVA_PARSER)
-      .build();
-
     private static final MethodMatcher ADD_REPOSITORY_URL_MATCHER = new MethodMatcher(MAVEN_LIBRARY_RESOLVER + " addRepositoryUrl(String)");
     private static final MethodMatcher ADD_DEPENDENCY_COORDS_MATCHER = new MethodMatcher(MAVEN_LIBRARY_RESOLVER + " addDependencyCoords(String)");
 
@@ -47,25 +32,44 @@ public class MavenLibraryResolverRecipe extends Recipe {
     @Override
     public J.MethodInvocation visitMethodInvocation(J.MethodInvocation method, ExecutionContext ctx) {
       if (ADD_REPOSITORY_URL_MATCHER.matches(method)) {
+        final JavaTemplate repositoryUrlTemplate = JavaTemplate.builder("""
+            addRepository(new RemoteRepository.Builder(null, "default", #{any(String)}).build())""")
+          .imports("org.eclipse.aether.repository.RemoteRepository")
+          .contextSensitive()
+          .javaParser(constructJavaParser(ctx))
+          .build();
+
         maybeAddImport("org.eclipse.aether.repository.RemoteRepository");
-        return REPOSITORY_URL_TEMPLATE.apply(
+        return super.visitMethodInvocation(repositoryUrlTemplate.apply(
           getCursor(),
           method.getCoordinates().replaceMethod(),
           method.getArguments().getFirst()
-        );
+        ), ctx);
       }
 
       if (ADD_DEPENDENCY_COORDS_MATCHER.matches(method)) {
+        final JavaTemplate dependencyCoordsTemplate = JavaTemplate.builder("""
+            addDependency(new Dependency(new DefaultArtifact(#{any(String)}), null));""")
+          .imports("org.eclipse.aether.graph.Dependency", "org.eclipse.aether.artifact.DefaultArtifact")
+          .contextSensitive()
+          .javaParser(constructJavaParser(ctx))
+          .build();
+
         maybeAddImport("org.eclipse.aether.graph.Dependency");
         maybeAddImport("org.eclipse.aether.artifact.DefaultArtifact");
-        return DEPENDENCY_COORDS_TEMPLATE.apply(
+        return super.visitMethodInvocation(dependencyCoordsTemplate.apply(
           getCursor(),
           method.getCoordinates().replaceMethod(),
           method.getArguments().getFirst()
-        );
+        ), ctx);
       }
 
-      return method;
+      return super.visitMethodInvocation(method, ctx);
+    }
+
+    private JavaParser.Builder<?, ?> constructJavaParser(ExecutionContext ctx) {
+      return JavaParser.fromJavaVersion()
+        .classpathFromResources(ctx, "tabletop-api", "maven-resolver-provider");
     }
   }
 }
