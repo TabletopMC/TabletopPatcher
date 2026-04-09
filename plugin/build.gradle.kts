@@ -42,11 +42,11 @@ gradlePlugin {
 
 publishing {
   repositories {
-    maven("https://eldonexus.com/maven-releases/") {
-      name = "EldoNexus"
+    maven("https://eldonexus.de/maven-releases/") {
+      name = "Eldonexus"
       credentials {
-        username = System.getenv("MAVEN_USERNAME") ?: ""
-        password = System.getenv("MAVEN_PASSWORD") ?: ""
+        username = System.getenv("NEXUS_USERNAME") ?: ""
+        password = System.getenv("NEXUS_PASSWORD") ?: ""
       }
     }
   }
