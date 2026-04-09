@@ -2,6 +2,7 @@ plugins {
   id("java-gradle-plugin")
   id("maven-publish")
   alias(libs.plugins.recipe.library)
+  alias(libs.plugins.shadow)
 }
 
 repositories {
@@ -31,9 +32,23 @@ recipeDependencies {
 }
 
 gradlePlugin {
-  val patcher by plugins.creating {
+  vcsUrl = "https://github.com/TabletopMC/TabletopPatcher"
+  plugins.register("tabletop-patcher") {
     id = "net.tabletopmc.tabletop-patcher"
     implementationClass = "net.tabletopmc.patcher.TabletopPatcherPlugin"
+    description = "Gradle plugin for crosscompiling from Tabletop API to Paper API."
+  }
+}
+
+publishing {
+  repositories {
+    maven("https://eldonexus.com/maven-releases/") {
+      name = "EldoNexus"
+      credentials {
+        username = System.getenv("MAVEN_USERNAME") ?: ""
+        password = System.getenv("MAVEN_PASSWORD") ?: ""
+      }
+    }
   }
 }
 

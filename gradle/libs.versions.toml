@@ -5,6 +5,9 @@ lombok = "latest.release"
 junit = "latest.release"
 tabletop-api = "26.1.1-SNAPSHOT"
 
+plugin-publish = "2.0.0"
+shadow = "9.4.1"
+
 [libraries]
 openrewrite-bom = { module = "org.openrewrite.recipe:rewrite-recipe-bom", version.ref = "openrewrite" }
 openrewrite-java = { module = "org.openrewrite:rewrite-java" }
@@ -22,3 +25,5 @@ tabletop-api = { module = "net.tabletopmc.tabletop:tabletop-api", version.ref = 
 
 [plugins]
 recipe-library = { id = "org.openrewrite.build.recipe-library", version.ref = "openrewrite" }
+plugin-publish = { id = "com.gradle.plugin-publish", version.ref = "plugin-publish" }
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }

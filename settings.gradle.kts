@@ -5,3 +5,4 @@ pluginManagement {
 rootProject.name = "tabletop-patcher"
 
 include("test-project")
+
