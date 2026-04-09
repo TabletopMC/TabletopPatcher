@@ -24,6 +24,6 @@ jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.re
 tabletop-api = { module = "net.tabletopmc.tabletop:tabletop-api", version.ref = "tabletop-api" }
 
 [plugins]
-recipe-library = { id = "org.openrewrite.build.recipe-library", version.ref = "openrewrite" }
+recipe-library = { id = "org.openrewrite.build.recipe-library-base", version.ref = "openrewrite" }
 plugin-publish = { id = "com.gradle.plugin-publish", version.ref = "plugin-publish" }
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
