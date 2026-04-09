@@ -5,10 +5,12 @@ import org.gradle.api.Project;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
+import org.gradle.api.tasks.bundling.Jar;
 
 class TabletopPatcherPlugin implements Plugin<Project> {
-  final String PATCHED_SOURCE_SET_NAME = "paperPatched";
+  private static final String PATCHED_SOURCE_SET_NAME = "paperPatched";
 
   @Override
   public void apply(Project project) {
@@ -17,24 +19,31 @@ class TabletopPatcherPlugin implements Plugin<Project> {
     }
 
     final SourceSetContainer sourceSetContainer = project.getExtensions().getByType(SourceSetContainer.class);
+    final SourceSet mainSourceSet = sourceSetContainer.getByName("main");
 
     final DirectoryProperty buildDirectory = project.getLayout().getBuildDirectory();
     final Provider<Directory> targetDirectory = buildDirectory.dir("generated/sources/tabletop-patcher/");
     sourceSetContainer.register(PATCHED_SOURCE_SET_NAME, set -> {
       set.getJava().srcDir(targetDirectory);
-      set.setCompileClasspath(sourceSetContainer.getByName("main").getCompileClasspath());
+      set.setCompileClasspath(mainSourceSet.getCompileClasspath());
+      set.setRuntimeClasspath(mainSourceSet.getRuntimeClasspath());
     });
 
-    sourceSetContainer.all(sourceSet -> {
-      if (sourceSet.getName().equals(PATCHED_SOURCE_SET_NAME)) {
-        return;
-      }
+    project.getTasks().register(SourceSetPatchTask.getTaskName(mainSourceSet), SourceSetPatchTask.class, task -> {
+      task.setDescription("Patches the main source with Paper-compatible code.");
 
-      project.getTasks().register(SourceSetPatchTask.getTaskName(sourceSet), SourceSetPatchTask.class, task -> {
-        task.setSourceSet(sourceSet);
-        task.setProjectDir(buildDirectory);
-        task.setTargetDirectory(targetDirectory);
-      });
+      task.setSourceSet(mainSourceSet);
+      task.setProjectDir(buildDirectory);
+      task.setTargetDirectory(targetDirectory);
+    });
+
+    project.getTasks().register("buildForPaper", Jar.class, (task) -> {
+      task.setGroup("build");
+      task.setDescription("Creates a Paper-compatible JAR file.");
+
+      task.dependsOn(SourceSetPatchTask.getTaskName(mainSourceSet));
+      task.from(sourceSetContainer.getByName(PATCHED_SOURCE_SET_NAME).getOutput());
+      task.getArchiveClassifier().set("paper");
     });
   }
 }
