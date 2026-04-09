@@ -22,7 +22,7 @@ class TabletopPatcherPlugin implements Plugin<Project> {
     final SourceSet mainSourceSet = sourceSetContainer.getByName("main");
 
     final DirectoryProperty buildDirectory = project.getLayout().getBuildDirectory();
-    final Provider<Directory> targetDirectory = buildDirectory.dir("generated/sources/tabletop-patcher/");
+    final Provider<Directory> targetDirectory = buildDirectory.dir("tabletop-patcher/patched");
     sourceSetContainer.register(PATCHED_SOURCE_SET_NAME, set -> {
       set.getJava().srcDir(targetDirectory);
       set.setCompileClasspath(mainSourceSet.getCompileClasspath());
