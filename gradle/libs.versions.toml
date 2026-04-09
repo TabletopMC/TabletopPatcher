@@ -1,5 +1,6 @@
 [versions]
 openrewrite = "latest.release"
+gson = "2.13.2"
 lombok = "latest.release"
 junit = "latest.release"
 tabletop-api = "26.1.1-SNAPSHOT"
@@ -9,6 +10,7 @@ openrewrite-bom = { module = "org.openrewrite.recipe:rewrite-recipe-bom", versio
 openrewrite-java = { module = "org.openrewrite:rewrite-java" }
 openrewrite-java-jdk25 = { module = "org.openrewrite:rewrite-java-25" }
 openrewrite-test = { module = "org.openrewrite:rewrite-test" }
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
 

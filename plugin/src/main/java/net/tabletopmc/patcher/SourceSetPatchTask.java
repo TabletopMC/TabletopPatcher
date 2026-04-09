@@ -1,10 +1,12 @@
 package net.tabletopmc.patcher;
 
 import net.tabletopmc.patcher.recipes.MavenLibraryResolverRecipe;
+import net.tabletopmc.patcher.util.CatchingConsumer;
+import net.tabletopmc.patcher.util.CatchingFunction;
+import net.tabletopmc.patcher.util.CatchingPredicate;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.DirectoryProperty;
-import org.gradle.api.file.RegularFile;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.model.ObjectFactory;
@@ -30,11 +32,14 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Stream;
 
 @NullMarked
@@ -46,11 +51,13 @@ class SourceSetPatchTask extends DefaultTask {
 
   private final SetProperty<File> sourceDirectories;
   private final DirectoryProperty targetDirectory;
+  private final SourcesCacheHandler sourcesCacheHandler;
 
   @Inject
   public SourceSetPatchTask(ObjectFactory objects) {
     sourceDirectories = objects.setProperty(File.class);
     targetDirectory = objects.directoryProperty();
+    sourcesCacheHandler = new SourcesCacheHandler(objects);
   }
 
   void setTargetDirectory(Provider<Directory> targetDirectory) {
@@ -59,27 +66,41 @@ class SourceSetPatchTask extends DefaultTask {
 
   void setSourceSet(SourceSet sourceSet) {
     this.sourceDirectories.value(sourceSet.getJava().getSrcDirs());
+    this.sourcesCacheHandler.getName().set(sourceSet.getName());
+  }
+
+  void setProjectDir(Provider<Directory> buildDir) {
+    this.sourcesCacheHandler.getBuildDir().set(buildDir);
   }
 
   @TaskAction
-  void patchIntoGeneratedSourceSet() {
+  void patchIntoGeneratedSourceSet() throws IOException {
     final ExecutionContext ctx = ParsingExecutionContextView.view(new InMemoryExecutionContext(Throwable::printStackTrace));
     final JavaParser parser = JavaParser.fromJavaVersion()
       .classpathFromResources(ctx, "tabletop-api", "maven-resolver-api")
       .build();
+
+    final SourcesCacheHandler.SourcesCache cache = this.sourcesCacheHandler.load();
+    final Map<Path, Instant> lastSourceAccess = new TreeMap<>();
+    final Map<Path, Instant> lastTargetAccess = new TreeMap<>();
+
+    final Path targetRootPath = targetDirectory.getAsFile().get().toPath();
 
     for (File rootFile : sourceDirectories.get()) {
       final Path rootPath = rootFile.toPath();
       try (Stream<Path> paths = Files.walk(rootPath)) {
         final Stream<Parser.Input> inputs = paths
           .filter(Files::isRegularFile)
-          .map(path -> {
-            try {
-              return Parser.Input.fromString(path, Files.readString(path));
-            } catch (IOException e) {
-              throw new RuntimeException(e);
-            }
-          });
+          .map(rootPath::relativize)
+          .peek(CatchingConsumer.of(
+            path -> lastSourceAccess.put(path, Files.getLastModifiedTime(rootPath.resolve(path)).toInstant())
+          ))
+          .filter(CatchingPredicate.of(
+            path -> cache.hasSourceFileChanged(path, rootPath) || cache.hasTargetFileChanged(path, targetRootPath)
+          ))
+          .map(CatchingFunction.of(
+            path -> Parser.Input.fromString(path, Files.readString(rootPath.resolve(path)))
+          ));
 
         final List<SourceFile> sourceFiles = parser.parseInputs(inputs.toList(), rootPath, ctx).toList();
         final List<SourceFile> modifiedFiles = applyRecipes(ctx, sourceFiles);
@@ -87,8 +108,7 @@ class SourceSetPatchTask extends DefaultTask {
         final Set<Path> copiedPaths = new HashSet<>();
         for (SourceFile modifiedFile : modifiedFiles) {
           final String content = modifiedFile.printAll();
-          final RegularFile targetFile = targetDirectory.get().file(modifiedFile.getSourcePath().toString());
-          final Path targetPath = targetFile.getAsFile().toPath();
+          final Path targetPath = targetRootPath.resolve(modifiedFile.getSourcePath());
           LOGGER.lifecycle("Copying modified file: " + targetPath);
 
           if (!Files.deleteIfExists(targetPath)) {
@@ -101,8 +121,7 @@ class SourceSetPatchTask extends DefaultTask {
         }
 
         for (SourceFile sourceFile : sourceFiles) {
-          final RegularFile targetFile = targetDirectory.get().file(sourceFile.getSourcePath().toString());
-          final Path targetPath = targetFile.getAsFile().toPath();
+          final Path targetPath = targetRootPath.resolve(sourceFile.getSourcePath());
           if (copiedPaths.contains(targetPath)) {
             continue;
           }
@@ -116,10 +135,17 @@ class SourceSetPatchTask extends DefaultTask {
           Files.writeString(targetPath, sourceFile.printAll());
           copiedPaths.add(targetPath);
         }
-      } catch (IOException e) {
-        throw new RuntimeException(e);
+      }
+
+      try (Stream<Path> targetPaths = Files.walk(targetRootPath)) {
+        targetPaths
+          .filter(Files::isRegularFile)
+          .map(targetRootPath::relativize)
+          .forEach(CatchingConsumer.of(path -> lastTargetAccess.put(path, Files.getLastModifiedTime(targetRootPath.resolve(path)).toInstant())));
       }
     }
+
+    this.sourcesCacheHandler.save(lastSourceAccess, lastTargetAccess);
   }
 
   private List<SourceFile> applyRecipes(ExecutionContext ctx, List<SourceFile> sourceFiles) {

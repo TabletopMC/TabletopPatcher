@@ -13,6 +13,7 @@ dependencies {
   implementation(platform(libs.openrewrite.bom))
   implementation(libs.openrewrite.java)
   runtimeOnly(libs.openrewrite.java.jdk25)
+  implementation(libs.gson)
 
   compileOnly(libs.lombok)
   annotationProcessor(libs.lombok)
